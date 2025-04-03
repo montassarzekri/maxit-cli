@@ -1,8 +1,9 @@
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:maxit_cli/core/config/config_manager.dart';
-import 'package:maxit_cli/entiies/main_config.dart';
+import 'package:maxit_cli/entities/main_config.dart';
 import 'package:maxit_cli/helpers/path_helper.dart';
+import 'package:maxit_cli/helpers/pkg_helper.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'dart:async';
@@ -27,7 +28,7 @@ class ConfigCommand extends Command<int> {
     );
 
     argParser.addOption(
-      'super-app-path',
+      'superapp-path',
       abbr: 's',
       help: 'Path to the super app directory or file',
       valueHelp: 'path',
@@ -53,17 +54,6 @@ class ConfigCommand extends Command<int> {
     );
   }
 
-  /// Expands the tilde (~) in the path to the home directory
-  String expandPath(String pathWithTilde) {
-    if (pathWithTilde.startsWith('~/')) {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '';
-      return path.join(home, pathWithTilde.substring(2));
-    }
-    return pathWithTilde;
-  }
-
   @override
   Future<int> run() async {
     final args = argResults!;
@@ -86,18 +76,17 @@ class ConfigCommand extends Command<int> {
 
   Future<int> _showConfig() async {
     try {
-      final MainConfig? config = await _configManager.load();
+      final MaxitConfig? config = await _configManager.load();
 
       if (config == null) {
         _logger.info(
             'No configuration found. Use "maxit config --set" to set up configuration.');
         return 0;
       }
-
-      _logger.info('Current Configuration:');
-      _logger.info('---------------------');
-
-      _logger.info('Super app path: ${config.toString()}');
+      await PkgHelper.findFlutterProjects(
+        config.kernelPath,
+        config.kernelPath,
+      );
 
       return 0;
     } catch (e) {
@@ -126,7 +115,7 @@ class ConfigCommand extends Command<int> {
     }
 
     // Expand tilde in path
-    kernelPath = expandPath(kernelPath);
+    kernelPath = PathHelper.expandPath(kernelPath);
 
     // Validate kernel path
     if (!Directory(kernelPath).existsSync() && !File(kernelPath).existsSync()) {
@@ -135,14 +124,14 @@ class ConfigCommand extends Command<int> {
     }
 
     // Get super app path - from arguments or prompt
-    String? superAppPath = args['super-app-path'] as String?;
+    String? superAppPath = args['superapp-path'] as String?;
 
     if (superAppPath == null || superAppPath.isEmpty) {
       superAppPath = _logger.prompt('Enter the super app path:');
     }
 
     // Expand tilde in path
-    superAppPath = expandPath(superAppPath);
+    superAppPath = PathHelper.expandPath(superAppPath);
 
     // Validate super app path
     if (!Directory(superAppPath).existsSync() &&
@@ -150,10 +139,6 @@ class ConfigCommand extends Command<int> {
       _logger.err('Error: Super app path does not exist: $superAppPath');
       return 1;
     }
-
-    String relativePath = PathHelper.getRelativePath(
-        sourceDirectory: superAppPath, targetDirectory: kernelPath);
-    _logger.info("SuperApp relative path to kernel: $relativePath");
 
     // Store the configuration
     try {

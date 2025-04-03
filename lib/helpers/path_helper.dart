@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as path;
 
 class PathHelper {
@@ -27,5 +29,16 @@ class PathHelper {
       normalizedTarget,
       from: normalizedSource,
     );
+  }
+
+  /// Expands the tilde (~) in the path to the home directory
+  static String expandPath(String pathWithTilde) {
+    if (pathWithTilde.startsWith('~/')) {
+      final home = Platform.environment['HOME'] ??
+          Platform.environment['USERPROFILE'] ??
+          '';
+      return path.join(home, pathWithTilde.substring(2));
+    }
+    return pathWithTilde;
   }
 }

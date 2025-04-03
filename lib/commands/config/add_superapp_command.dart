@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:maxit_cli/entiies/main_config.dart';
 import 'package:maxit_cli/helpers/path_helper.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/command_runner.dart';
@@ -33,15 +32,6 @@ class AddSuperAppCommand extends Command<int> {
   }
 
   /// Expands the tilde (~) in the path to the home directory
-  String expandPath(String pathWithTilde) {
-    if (pathWithTilde.startsWith('~/')) {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '';
-      return path.join(home, pathWithTilde.substring(2));
-    }
-    return pathWithTilde;
-  }
 
   @override
   Future<int> run() async {
@@ -62,7 +52,7 @@ class AddSuperAppCommand extends Command<int> {
     }
 
     // Expand tilde in path
-    superAppPath = expandPath(superAppPath);
+    superAppPath = PathHelper.expandPath(superAppPath);
 
     // Check if the path already exists in configuration
     if (_configManager.config!.superAppsPaths.contains(superAppPath)) {

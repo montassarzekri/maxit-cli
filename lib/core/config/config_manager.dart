@@ -1,5 +1,6 @@
 import 'dart:io';
-import 'package:maxit_cli/entiies/main_config.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:maxit_cli/entities/main_config.dart';
 import 'package:path/path.dart' as path;
 
 class ConfigManager {
@@ -15,7 +16,7 @@ class ConfigManager {
     _initConfigPaths();
   }
 
-  MainConfig? _config;
+  MaxitConfig? _config;
   late Directory _configDir;
   late File _configFile;
   bool _initialized = false;
@@ -24,7 +25,7 @@ class ConfigManager {
   bool get hasConfig => _config != null;
 
   /// The current configuration
-  MainConfig? get config => _config;
+  MaxitConfig? get config => _config;
 
   /// Initialize the config directory and file path
   void _initConfigPaths() {
@@ -53,7 +54,7 @@ class ConfigManager {
   }
 
   /// Loads configuration from disk
-  Future<MainConfig?> load() async {
+  Future<MaxitConfig?> load() async {
     await _ensureConfigDirExists();
 
     if (!await _configFile.exists()) {
@@ -62,10 +63,10 @@ class ConfigManager {
 
     try {
       final yamlString = await _configFile.readAsString();
-      _config = MainConfig.fromYaml(yamlString);
+      _config = MaxitConfig.fromYaml(yamlString);
       return _config;
-    } catch (e) {
-      // Log error instead of printing
+    } catch (e, stk) {
+      Logger().err("Error loading config $e,$stk");
       return null;
     }
   }
@@ -81,7 +82,7 @@ class ConfigManager {
   }
 
   /// Saves configuration to disk
-  Future<void> save({MainConfig? config}) async {
+  Future<void> save({MaxitConfig? config}) async {
     await _ensureConfigDirExists();
 
     if (_config == null && config == null) {
@@ -110,11 +111,14 @@ class ConfigManager {
 
     // Create initial config if none exists
     if (_config == null) {
-      _config = MainConfig(
+      _config = MaxitConfig(
         kernelPath: '',
         superAppsPaths: [normalizedPath],
         defaultSuperAppPath: setAsDefault ? normalizedPath : '',
         remoteKernelRef: 'origin/main',
+        defaultEditor: "",
+        kernelPkgsPaths: [],
+        superAppPkgsPaths: [],
       );
     } else {
       // Get current super apps list
@@ -132,11 +136,14 @@ class ConfigManager {
       }
 
       // Update config
-      _config = MainConfig(
+      _config = MaxitConfig(
         kernelPath: _config!.kernelPath,
         superAppsPaths: superAppsList,
         defaultSuperAppPath: defaultPath,
         remoteKernelRef: _config!.remoteKernelRef,
+        defaultEditor: _config!.defaultEditor,
+        kernelPkgsPaths: _config!.kernelPkgsPaths,
+        superAppPkgsPaths: _config!.superAppPkgsPaths,
       );
     }
 
@@ -152,11 +159,14 @@ class ConfigManager {
         setAsDefault: _config?.defaultSuperAppPath?.isEmpty ?? true);
 
     // Update kernel path
-    _config = MainConfig(
+    _config = MaxitConfig(
       kernelPath: normalizedKernelPath,
       superAppsPaths: _config!.superAppsPaths,
       defaultSuperAppPath: _config!.defaultSuperAppPath,
       remoteKernelRef: _config!.remoteKernelRef ?? 'origin/main',
+      defaultEditor: _config!.defaultEditor ?? '',
+      kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
+      superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],
     );
 
     await save();
@@ -178,17 +188,41 @@ class ConfigManager {
       throw Exception('Super app path does not exist in configuration');
     }
 
-    _config = MainConfig(
+    _config = MaxitConfig(
       kernelPath: _config!.kernelPath,
       superAppsPaths: _config!.superAppsPaths,
       defaultSuperAppPath: normalizedPath,
       remoteKernelRef: _config!.remoteKernelRef,
+      defaultEditor: _config!.defaultEditor,
+      kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
+      superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],
     );
 
     await save();
   }
 
   /// Updates remote kernel reference
+  Future<void> updateDefaultEditor(String defaultEditor) async {
+    if (_config == null) {
+      await load();
+      if (_config == null) {
+        throw Exception('Cannot update: No configuration loaded');
+      }
+    }
+
+    _config = MaxitConfig(
+      kernelPath: _config!.kernelPath,
+      superAppsPaths: _config!.superAppsPaths,
+      defaultSuperAppPath: _config!.defaultSuperAppPath,
+      remoteKernelRef: _config!.remoteKernelRef,
+      defaultEditor: defaultEditor,
+      kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
+      superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],
+    );
+
+    await save();
+  }
+
   Future<void> updateRemoteKernelRef(String remoteRef) async {
     if (_config == null) {
       await load();
@@ -197,13 +231,118 @@ class ConfigManager {
       }
     }
 
-    _config = MainConfig(
+    _config = MaxitConfig(
       kernelPath: _config!.kernelPath,
       superAppsPaths: _config!.superAppsPaths,
       defaultSuperAppPath: _config!.defaultSuperAppPath,
       remoteKernelRef: remoteRef,
+      defaultEditor: _config!.defaultEditor,
+      kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
+      superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],
     );
 
     await save();
+  }
+
+  /// Updates kernel packages paths in configuration
+  Future<void> updateKernelPkgsPaths(List<String> kernelPkgsPaths) async {
+    // Initialize config if needed
+    if (_config == null) {
+      await load();
+      if (_config == null) {
+        throw Exception(
+            'Cannot update kernel packages paths: No configuration loaded');
+      }
+    }
+
+    // Normalize all paths
+    final normalizedPaths =
+        kernelPkgsPaths.map((p) => path.normalize(p)).toList();
+
+    // Update config
+    _config = MaxitConfig(
+      kernelPath: _config!.kernelPath,
+      superAppsPaths: _config!.superAppsPaths,
+      defaultSuperAppPath: _config!.defaultSuperAppPath,
+      remoteKernelRef: _config!.remoteKernelRef,
+      defaultEditor: _config!.defaultEditor,
+      kernelPkgsPaths: normalizedPaths,
+      superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],
+    );
+
+    await save();
+  }
+
+  /// Updates super app packages paths in configuration
+  Future<void> updateSuperAppPkgsPaths(List<String> superAppPkgsPaths) async {
+    // Initialize config if needed
+    if (_config == null) {
+      await load();
+      if (_config == null) {
+        throw Exception(
+            'Cannot update super app packages paths: No configuration loaded');
+      }
+    }
+
+    // Normalize all paths
+    final normalizedPaths =
+        superAppPkgsPaths.map((p) => path.normalize(p)).toList();
+
+    // Update config
+    _config = MaxitConfig(
+      kernelPath: _config!.kernelPath,
+      superAppsPaths: _config!.superAppsPaths,
+      defaultSuperAppPath: _config!.defaultSuperAppPath,
+      remoteKernelRef: _config!.remoteKernelRef,
+      defaultEditor: _config!.defaultEditor,
+      kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
+      superAppPkgsPaths: normalizedPaths,
+    );
+
+    await save();
+  }
+
+  /// Adds a kernel packages path to the existing list
+  Future<void> addKernelPkgsPath(String kernelPkgsPath) async {
+    // Initialize config if needed
+    if (_config == null) {
+      await load();
+      if (_config == null) {
+        throw Exception(
+            'Cannot add kernel packages path: No configuration loaded');
+      }
+    }
+
+    final normalizedPath = path.normalize(kernelPkgsPath);
+    final currentPaths = List<String>.from(_config!.kernelPkgsPaths ?? []);
+
+    // Add if not already present
+    if (!currentPaths.contains(normalizedPath)) {
+      currentPaths.add(normalizedPath);
+    }
+
+    await updateKernelPkgsPaths(currentPaths);
+  }
+
+  /// Adds a super app packages path to the existing list
+  Future<void> addSuperAppPkgsPath(String superAppPkgsPath) async {
+    // Initialize config if needed
+    if (_config == null) {
+      await load();
+      if (_config == null) {
+        throw Exception(
+            'Cannot add super app packages path: No configuration loaded');
+      }
+    }
+
+    final normalizedPath = path.normalize(superAppPkgsPath);
+    final currentPaths = List<String>.from(_config!.superAppPkgsPaths ?? []);
+
+    // Add if not already present
+    if (!currentPaths.contains(normalizedPath)) {
+      currentPaths.add(normalizedPath);
+    }
+
+    await updateSuperAppPkgsPaths(currentPaths);
   }
 }

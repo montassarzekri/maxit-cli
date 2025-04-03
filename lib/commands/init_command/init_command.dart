@@ -63,33 +63,4 @@ class InitCommand extends Command<int> {
 
     return 0;
   }
-
-  Future<List<String>> _findFlutterProjects(
-      String monorepoRoot, String appsPath) async {
-    final appDir = Directory(path.join(monorepoRoot, appsPath));
-    final projectPaths = <String>[];
-
-    if (!await appDir.exists()) {
-      _logger.warn('Apps directory does not exist: ${appDir.path}');
-      return projectPaths;
-    }
-
-    await for (final entity in appDir.list(recursive: true)) {
-      if (entity is Directory) {
-        final pubspecFile = File(path.join(entity.path, 'pubspec.yaml'));
-        if (await pubspecFile.exists()) {
-          final content = await pubspecFile.readAsString();
-          if (content.contains('flutter:')) {
-            final relativePath = path.relative(entity.path, from: monorepoRoot);
-            print("Found Package at ${entity.path}");
-            print("Found Package at ${entity.toString()}");
-            print("Found Package relative====> $relativePath");
-            // projectPaths.add(relativePath);
-          }
-        }
-      }
-    }
-
-    return projectPaths;
-  }
 }

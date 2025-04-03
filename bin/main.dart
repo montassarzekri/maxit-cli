@@ -3,6 +3,7 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:maxit_cli/commands/config/config_command.dart';
 import 'package:maxit_cli/commands/config/add_superapp_command.dart';
+import 'package:maxit_cli/commands/pkgs/pkg_command.dart';
 import 'package:maxit_cli/maxit_cli.dart';
 
 Future<void> main(List<String> args) async {
@@ -21,7 +22,8 @@ Future<void> main(List<String> args) async {
       ..addCommand(InitCommand(logger, configManager))
       ..addCommand(ListProjectsCommand(logger, configManager))
       ..addCommand(ConfigCommand(logger, configManager))
-      ..addCommand(AddSuperAppCommand(logger, configManager));
+      ..addCommand(AddSuperAppCommand(logger, configManager))
+      ..addCommand(PkgCommand(logger, configManager));
     // Add more commands as needed
 
     // If no config and not already running config or help command
