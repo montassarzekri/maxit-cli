@@ -151,19 +151,29 @@ class ConfigManager {
   }
 
   /// Saves kernel and super app paths
-  Future<void> saveConfig(String kernelPath, String superAppPath) async {
+  Future<void> saveConfig({
+    required String kernelPath,
+    required String superAppPath,
+    String remoteKernelPath = '',
+    String remoteKernelRef = 'main',
+  }) async {
     final normalizedKernelPath = path.normalize(kernelPath);
 
     // Add the super app path first
     await addSuperAppPath(superAppPath,
         setAsDefault: _config?.defaultSuperAppPath?.isEmpty ?? true);
 
-    // Update kernel path
+    // Update all config values at once
     _config = MaxitConfig(
       kernelPath: normalizedKernelPath,
       superAppsPaths: _config!.superAppsPaths,
       defaultSuperAppPath: _config!.defaultSuperAppPath,
-      remoteKernelRef: _config!.remoteKernelRef ?? 'origin/main',
+      remoteKernelPath: remoteKernelPath.isNotEmpty
+          ? remoteKernelPath
+          : (_config!.remoteKernelPath ?? ''),
+      remoteKernelRef: remoteKernelRef.isNotEmpty
+          ? remoteKernelRef
+          : (_config!.remoteKernelRef ?? 'main'),
       defaultEditor: _config!.defaultEditor ?? '',
       kernelPkgsPaths: _config!.kernelPkgsPaths ?? [],
       superAppPkgsPaths: _config!.superAppPkgsPaths ?? [],

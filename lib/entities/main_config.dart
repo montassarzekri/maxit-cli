@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:maxit_cli/helpers/path_helper.dart';
 import 'package:yaml/yaml.dart';
 
@@ -9,6 +11,7 @@ class MaxitConfig {
   final String defaultEditor;
   final List<String> kernelPkgsPaths;
   final List<String> superAppPkgsPaths;
+  final String remoteKernelPath;
 
   MaxitConfig({
     required this.kernelPath,
@@ -18,7 +21,23 @@ class MaxitConfig {
     required this.defaultEditor,
     required this.kernelPkgsPaths,
     required this.superAppPkgsPaths,
-  });
+    String? remoteKernelPath,
+  }) : remoteKernelPath = remoteKernelPath ?? getRemoteKernelPath();
+
+  static String getRemoteKernelPath() {
+    // Check if GITHUB_TOKEN environment variable exists
+    final githubToken = Platform.environment['GITHUB_TOKEN'];
+
+    const baseUrl = 'https://github.com/keyrustunisie/maxit-mobile-kernel.git';
+
+    // If token exists, create authenticated URL
+    if (githubToken != null && githubToken.isNotEmpty) {
+      return 'https://$githubToken@github.com/keyrustunisie/maxit-mobile-kernel.git';
+    }
+
+    // Return unauthenticated URL as fallback
+    return baseUrl;
+  }
 
   String get superAppRelativePathToKernel => PathHelper.getRelativePath(
       sourceDirectory: defaultSuperAppPath, targetDirectory: kernelPath);
@@ -45,6 +64,10 @@ class MaxitConfig {
     for (final path in superAppPkgsPaths) {
       buffer.writeln('    - $path');
     }
+
+    // Don't print the actual URL with token for security reasons
+    buffer.writeln('  Remote Kernel Path: [Repository URL configured]');
+
     return buffer.toString();
   }
 
@@ -58,6 +81,9 @@ class MaxitConfig {
       'defaultEditor': defaultEditor,
       'kernelPkgsPaths': kernelPkgsPaths,
       'superAppPkgsPaths': superAppPkgsPaths,
+      // Don't include the authenticated URL in the serialized config
+      'remoteKernelPath':
+          'https://github.com/keyrustunisie/maxit-mobile-kernel.git',
     };
   }
 
@@ -87,6 +113,8 @@ class MaxitConfig {
       yamlString.writeln('  - $path');
     }
 
+    yamlString.writeln('remoteKernelPath: ${map['remoteKernelPath']}');
+
     return yamlString.toString();
   }
 
@@ -108,6 +136,10 @@ class MaxitConfig {
             .toList()
         : <String>[];
 
+    // When loading from config, use the base URL and let the constructor apply the token
+    final baseRemoteKernelPath = map['remoteKernelPath'] as String? ??
+        'https://github.com/keyrustunisie/maxit-mobile-kernel.git';
+
     return MaxitConfig(
       kernelPath: map['kernelPath'] as String,
       superAppsPaths: superAppsPaths,
@@ -116,6 +148,7 @@ class MaxitConfig {
       defaultEditor: map['defaultEditor'] as String? ?? "",
       kernelPkgsPaths: kernelPkgsPaths,
       superAppPkgsPaths: superAppPkgsPaths,
+      remoteKernelPath: baseRemoteKernelPath,
     );
   }
 
