@@ -213,6 +213,33 @@ abstract class PkgHelper {
       _logger.err("Error traversing directory ${directory.path}: $e");
     }
   }
+
+  static Future<void> scanSuperAppPackages(String superAppPath) async {
+    final progress =
+        _logger.progress('Scanning for packages in the new default super app');
+
+    try {
+      final packagesFound =
+          await PkgHelper.findFlutterPkgs(superAppPath, superAppPath);
+
+      if (packagesFound.isEmpty) {
+        progress.complete('No packages found in the super app');
+        _logger.info('No packages found in the super app directory.');
+        return;
+      }
+
+      await ConfigManager().updateSuperAppPkgsPaths(packagesFound);
+      progress.complete('Found ${packagesFound.length} packages');
+
+      _logger.success('Updated super app packages in configuration:');
+      for (final pkg in packagesFound) {
+        _logger.info('  • ${path.basename(pkg)}');
+      }
+    } catch (e) {
+      progress.fail('Error scanning super app directories');
+      _logger.err('Error during package scan: $e');
+    }
+  }
 }
 
 enum DevEnv { local, remote }

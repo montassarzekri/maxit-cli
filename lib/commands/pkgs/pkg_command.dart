@@ -22,13 +22,13 @@ class PkgCommand extends Command<int> {
       negatable: false,
     );
     argParser.addFlag(
-      'use-local',
+      'local',
       abbr: 'l',
       help: 'Switch to use local dependencies',
       negatable: false,
     );
     argParser.addFlag(
-      'use-remote',
+      'remote',
       abbr: 'r',
       help: 'Switch to use remote dependencies',
       negatable: false,
@@ -65,17 +65,19 @@ class PkgCommand extends Command<int> {
       return await scanForPkgs(FolderBase.kernel);
     } else if (args.wasParsed('scan-superapp')) {
       return await scanForPkgs(FolderBase.superApp);
-    } else if (args.wasParsed('use-local') || args.wasParsed('use-remote')) {
-      final env = args.wasParsed('use-local') ? DevEnv.local : DevEnv.remote;
+    } else if (args.wasParsed('local') || args.wasParsed('remote')) {
+      print("ARGPARSED :=> ${args.arguments}");
+      final env = args.wasParsed('local') ? DevEnv.local : DevEnv.remote;
 
       if (args.wasParsed('all')) {
+        _logger.alert("All env =>$env");
         return await switchAllPkgsEnv(env);
       } else {
         return await switchPkgEnv(env, args['package'] as String?);
       }
     } else {
       _logger.info(
-          'Please specify an option (--scan-kernel, --scan-superapp, --use-local, or --use-remote)');
+          'Please specify an option (--scan-kernel, --scan-superapp, --local, or --remote)');
       return 1;
     }
   }
