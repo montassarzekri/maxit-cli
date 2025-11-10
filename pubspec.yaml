@@ -6,7 +6,7 @@ version: 1.0.0
 executables:
   maxit: main
 environment:
-  sdk: ^3.5.0
+  sdk: ^3.6.0
 
 # Add regular dependencies here.
 dependencies:
